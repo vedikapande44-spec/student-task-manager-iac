@@ -27,8 +27,8 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       TF_VAR_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TF_VAR_workers_subdomain: ${{ vars.TF_VAR_workers_subdomain }}
       TF_IN_AUTOMATION: "true"
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
