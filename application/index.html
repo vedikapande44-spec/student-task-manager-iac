@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskNest | Student Task Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="blobs"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="logo"><i data-icon="check"></i></span>
+        <div><b>TaskNest</b><small>Student Task Manager</small></div>
+      </div>
+      <nav class="nav">
+        <a href="#dashboard" data-view="dashboard"><i data-icon="home"></i>Dashboard</a>
+        <p class="nav-label">CRUD flow</p>
+        <a href="#create" data-view="create"><i class="sn">1</i>Create Task</a>
+        <a href="#read" data-view="read"><i class="sn">2</i>View Tasks</a>
+        <a href="#update" data-view="update"><i class="sn">3</i>Update Task</a>
+        <a href="#delete" data-view="delete"><i class="sn">4</i>Delete Task</a>
+      </nav>
+      <div class="side-quote">
+        <i data-icon="quote"></i>
+        <p id="q-text"></p>
+      </div>
+      <div class="env">Terraform &middot; Cloudflare Workers + KV</div>
+    </aside>
+
+    <main class="main">
+
+      <!-- ================= DASHBOARD ================= -->
+      <section class="view" id="view-dashboard">
+        <div class="hero">
+          <span class="shape s1"></span><span class="shape s2"></span><span class="shape s3"></span>
+          <h1>Ready to <span id="rotator"></span><span class="caret"></span> your tasks?</h1>
+          <p>Your cloud-powered study planner, deployed with Terraform on Cloudflare Workers and KV.</p>
+          <a class="btn btn-light" href="#create"><i data-icon="plus"></i>Create a task</a>
+        </div>
+
+        <div class="grid g4" style="margin-bottom:16px">
+          <div class="card stat" style="--c:#6366f1"><span class="ico"><i data-icon="grid"></i></span><div><b id="st-total">0</b><span>Total tasks</span></div></div>
+          <div class="card stat" style="--c:#8b5cf6"><span class="ico"><i data-icon="clock"></i></span><div><b id="st-pending">0</b><span>Pending</span></div></div>
+          <div class="card stat" style="--c:#3b82f6"><span class="ico"><i data-icon="activity"></i></span><div><b id="st-progress">0</b><span>In Progress</span></div></div>
+          <div class="card stat" style="--c:#10b981"><span class="ico"><i data-icon="check"></i></span><div><b id="st-done">0</b><span>Completed</span></div></div>
+        </div>
+
+        <div class="grid g21">
+          <div class="card">
+            <h2>Status overview</h2>
+            <div class="split">
+              <div class="donut">
+                <svg width="150" height="150" viewBox="0 0 150 150">
+                  <circle class="tr" cx="75" cy="75" r="52"/>
+                  <circle id="dn-pending" cx="75" cy="75" r="52" stroke="#8b5cf6" style="stroke-dasharray:0 327"/>
+                  <circle id="dn-progress" cx="75" cy="75" r="52" stroke="#3b82f6" style="stroke-dasharray:0 327"/>
+                  <circle id="dn-done" cx="75" cy="75" r="52" stroke="#10b981" style="stroke-dasharray:0 327"/>
+                </svg>
+                <div class="donut-c"><b id="dn-pct">0%</b><span>completed</span></div>
+              </div>
+              <div class="legend">
+                <span><i style="background:#8b5cf6"></i>Pending <b id="lg-p">0</b></span>
+                <span><i style="background:#3b82f6"></i>In Progress <b id="lg-i">0</b></span>
+                <span><i style="background:#10b981"></i>Completed <b id="lg-c">0</b></span>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h2>By priority</h2>
+            <div class="bar-row"><span>High</span><div class="bar"><i id="bar-High" style="background:#f43f5e"></i></div><b id="bn-High">0</b></div>
+            <div class="bar-row"><span>Medium</span><div class="bar"><i id="bar-Medium" style="background:#f59e0b"></i></div><b id="bn-Medium">0</b></div>
+            <div class="bar-row"><span>Low</span><div class="bar"><i id="bar-Low" style="background:#14b8a6"></i></div><b id="bn-Low">0</b></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <h2>Recent tasks</h2>
+          <div id="recent"></div>
+        </div>
+      </section>
+
+      <!-- ================= CREATE ================= -->
+      <section class="view" id="view-create" hidden>
+        <div class="page-head"><h1>Create task</h1><p>Step 1 &middot; Add a new task. It stays <b>Pending</b> until you complete it.</p></div>
+        <ol class="steps" data-steps></ol>
+        <div class="grid g2">
+          <form class="card" id="c-form" autocomplete="off">
+            <h2>Task details</h2>
+            <div class="field"><label class="f" for="c-title">Task title</label>
+              <input type="text" id="c-title" maxlength="120" placeholder="e.g. Prepare Final Year Project Presentation" required></div>
+            <div class="field"><label class="f">Priority</label><div id="c-pri"></div></div>
+            <div class="field"><label class="f">Status</label>
+              <div class="lock"><i data-icon="lock"></i>Pending<small>Auto-assigned</small></div></div>
+            <button class="btn btn-primary" type="submit"><i data-icon="plus"></i>Add task</button>
+            <div class="success" id="c-ok" hidden></div>
+          </form>
+          <div>
+            <div class="card"><h2>Live preview</h2><div id="c-prev"></div></div>
+            <div class="card tip" style="margin-top:16px"><i data-icon="spark"></i><p>Tip: give every task a clear title and the right priority. You can move it to <b>In Progress</b> or <b>Completed</b> from the Update page.</p></div>
+          </div>
+        </div>
+        <div class="next-row"><a class="btn btn-ghost" href="#read">Next: View tasks <i data-icon="arrow"></i></a></div>
+      </section>
+
+      <!-- ================= READ ================= -->
+      <section class="view" id="view-read" hidden>
+        <div class="page-head"><h1>View tasks</h1><p>Step 2 &middot; Read stored tasks, search, filter or look one up by ID.</p></div>
+        <ol class="steps" data-steps></ol>
+
+        <div class="card" style="margin-bottom:16px">
+          <h2>Find a task by ID</h2>
+          <form id="l-form" class="toolbar" style="margin:0" autocomplete="off">
+            <div class="sbox"><i data-icon="hash"></i><input type="search" id="l-id" placeholder="e.g. T101"></div>
+            <button class="btn btn-primary" type="submit">Find task</button>
+          </form>
+          <div id="l-res" style="margin-top:12px"></div>
+        </div>
+
+        <div class="toolbar">
+          <div class="sbox"><i data-icon="search"></i><input type="search" id="r-search" placeholder="Search tasks..."></div>
+          <div class="chips" id="r-chips"></div>
+          <div id="r-sort"></div>
+        </div>
+        <div class="tgrid" id="r-list"></div>
+        <div class="empty" id="r-empty" hidden></div>
+        <div class="next-row"><a class="btn btn-ghost" href="#update">Next: Update task <i data-icon="arrow"></i></a></div>
+      </section>
+
+      <!-- ================= UPDATE ================= -->
+      <section class="view" id="view-update" hidden>
+        <div class="page-head"><h1>Update task</h1><p>Step 3 &middot; Change title, priority or move the status forward.</p></div>
+        <ol class="steps" data-steps></ol>
+        <div class="grid g2">
+          <div class="card" style="align-self:start">
+            <h2>Select task</h2>
+            <div id="u-sel"></div>
+            <p class="note" style="margin:12px 0 0">Pick any task, then change its status from Pending to Completed.</p>
+          </div>
+          <div class="card">
+            <div id="u-editor" hidden>
+              <div class="tc-top" style="margin-bottom:16px"><span class="tid" id="u-id"></span><span class="note">Editing task</span></div>
+              <div class="field"><label class="f" for="u-title">Title</label><input type="text" id="u-title" maxlength="120"></div>
+              <div class="field"><label class="f">Priority</label><div id="u-pri"></div></div>
+              <div class="field"><label class="f">Status</label>
+                <div class="track">
+                  <div id="track-fill"></div>
+                  <button type="button" class="stp" data-s="Pending"><span><i data-icon="clock"></i></span>Pending</button>
+                  <button type="button" class="stp" data-s="In Progress"><span><i data-icon="activity"></i></span>In Progress</button>
+                  <button type="button" class="stp" data-s="Completed"><span><i data-icon="check"></i></span>Completed</button>
+                </div>
+              </div>
+              <div class="diff" id="u-diff"></div>
+              <button class="btn btn-primary" id="u-save" type="button"><i data-icon="check"></i>Save changes</button>
+            </div>
+            <div class="empty" id="u-empty"></div>
+          </div>
+        </div>
+        <div class="next-row"><a class="btn btn-ghost" href="#delete">Next: Delete task <i data-icon="arrow"></i></a></div>
+      </section>
+
+      <!-- ================= DELETE ================= -->
+      <section class="view" id="view-delete" hidden>
+        <div class="page-head"><h1>Delete task</h1><p>Step 4 &middot; Remove a task permanently from Workers KV.</p></div>
+        <ol class="steps" data-steps></ol>
+        <div id="d-list"></div>
+        <div class="empty card" id="d-empty" hidden></div>
+        <div class="next-row"><a class="btn btn-ghost" href="#dashboard">Back to dashboard <i data-icon="home"></i></a></div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Delete confirmation -->
+  <div class="modal" id="modal">
+    <div class="mbox">
+      <div class="mico"><i data-icon="trash"></i></div>
+      <h3>Delete this task?</h3>
+      <p id="m-text"></p>
+      <div class="row">
+        <button class="btn btn-ghost" id="m-no" type="button">Cancel</button>
+        <button class="btn btn-danger" id="m-yes" type="button">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/script.js"></script>
+</body>
+</html>

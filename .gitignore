@@ -1,0 +1,37 @@
+
+# Terraform local files
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+terraform/terraform.tfvars
+terraform/crash.log
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Keep Terraform dependency lock file
+!terraform/terraform.lock.hcl
+
+# Environment files and secrets
+.env
+.env.*
+*.env
+!.env.example
+
+# Private keys and credentials
+*.pem
+*.key
+secrets.*
+credentials.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Dependencies
+node_modules/
+# Local Terraform debugging output
+terraform/plan-error.txt
