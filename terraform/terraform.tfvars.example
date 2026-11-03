@@ -1,2 +1,14 @@
-account_id        = "your-cloudflare-account-id"
-workers_subdomain = "your-workers-subdomain"
+# Cloudflare Configuration Variables
+# Copy this file to terraform.tfvars and fill in your actual values.
+# Do NOT commit terraform.tfvars containing real credentials to version control.
+
+# Your Cloudflare Account ID (Found in Cloudflare Dashboard -> Workers & Pages Overview on the right side)
+account_id = "your-cloudflare-account-id"
+
+# Your account's workers.dev subdomain (the prefix before .workers.dev)
+workers_subdomain = "your-subdomain"
+
+# Optional overrides (defaults are defined in variables.tf)
+# worker_name        = "student-task-manager"
+# kv_namespace_name  = "student_tasks"
+# environment        = "dev"

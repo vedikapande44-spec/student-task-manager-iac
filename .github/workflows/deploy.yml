@@ -1,8 +1,15 @@
-
 name: Deploy Student Task Manager
 
 on:
   push:
+    branches:
+      - main
+      - master
+    paths:
+      - "application/**"
+      - "terraform/**"
+      - ".github/workflows/deploy.yml"
+  pull_request:
     branches:
       - main
       - master
@@ -27,14 +34,17 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       TF_VAR_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      TF_VAR_workers_subdomain: ${{ vars.TF_VAR_workers_subdomain }}
+      TF_VAR_workers_subdomain: ${{ vars.TF_VAR_workers_subdomain || secrets.CLOUDFLARE_WORKERS_SUBDOMAIN || 'vedikapande44' }}
       TF_IN_AUTOMATION: "true"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
 
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
@@ -47,3 +57,7 @@ jobs:
 
       - name: Terraform Plan
         run: terraform plan -input=false
+
+      - name: Terraform Apply
+        if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || github.event_name == 'workflow_dispatch'
+        run: terraform apply -auto-approve -input=false

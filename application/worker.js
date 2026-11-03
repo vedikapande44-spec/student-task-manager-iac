@@ -6,14 +6,26 @@ const SCRIPT_JS = __SCRIPT_JS__;
 const PRIORITIES = ["High", "Medium", "Low"];
 const STATUSES = ["Pending", "In Progress", "Completed"];
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+      ...CORS_HEADERS,
+    },
   });
 
 const text = (body, type) =>
-  new Response(body, { headers: { "Content-Type": type + "; charset=utf-8" } });
+  new Response(body, {
+    headers: { "Content-Type": type + "; charset=utf-8", ...CORS_HEADERS },
+  });
 
 async function nextTaskId(env) {
   const current = parseInt((await env.TASKS_KV.get("meta:counter")) || "100", 10);
@@ -36,20 +48,31 @@ export default {
     const path = url.pathname;
     const method = request.method;
 
-    // ---------- Frontend ----------
-    if (method === "GET" && path === "/") return text(INDEX_HTML, "text/html");
-    if (method === "GET" && path === "/style.css") return text(STYLE_CSS, "text/css");
-    if (method === "GET" && path === "/script.js") return text(SCRIPT_JS, "application/javascript");
+    // ---------- CORS Preflight ----------
+    if (method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
 
-    // ---------- /api/tasks ----------
+    // ---------- Frontend Static Assets ----------
+    if ((method === "GET" || method === "HEAD") && path === "/") {
+      return text(method === "HEAD" ? "" : INDEX_HTML, "text/html");
+    }
+    if ((method === "GET" || method === "HEAD") && path === "/style.css") {
+      return text(method === "HEAD" ? "" : STYLE_CSS, "text/css");
+    }
+    if ((method === "GET" || method === "HEAD") && path === "/script.js") {
+      return text(method === "HEAD" ? "" : SCRIPT_JS, "application/javascript");
+    }
+
+    // ---------- /api/tasks (Collection) ----------
     if (path === "/api/tasks") {
-      if (method === "GET") {
+      if (method === "GET" || method === "HEAD") {
         const list = await env.TASKS_KV.list({ prefix: "task:" });
         const tasks = await Promise.all(
           list.keys.map((k) => env.TASKS_KV.get(k.name, "json"))
         );
-        tasks.sort((a, b) => a.createdDate.localeCompare(b.createdDate));
-        return json(tasks);
+        tasks.sort((a, b) => (a.createdDate || "").localeCompare(b.createdDate || ""));
+        return json(method === "HEAD" ? [] : tasks);
       }
 
       if (method === "POST") {
@@ -68,6 +91,8 @@ export default {
           title: data.title.trim(),
           priority,
           status,
+          category: data.category ? data.category.trim() : "Academic",
+          dueDate: data.dueDate || null,
           createdDate: new Date().toISOString(),
         };
         await env.TASKS_KV.put("task:" + id, JSON.stringify(task));
@@ -77,7 +102,7 @@ export default {
       return json({ error: "method not allowed" }, 405);
     }
 
-    // ---------- /api/tasks/:id ----------
+    // ---------- /api/tasks/:id (Individual Resource) ----------
     const match = path.match(/^\/api\/tasks\/([A-Za-z0-9_-]+)$/);
     if (match) {
       const id = match[1];
@@ -85,19 +110,27 @@ export default {
       const existing = await env.TASKS_KV.get(key, "json");
       if (!existing) return json({ error: "task not found" }, 404);
 
-      if (method === "GET") return json(existing);
+      if (method === "GET" || method === "HEAD") {
+        return json(method === "HEAD" ? {} : existing);
+      }
 
       if (method === "PUT") {
         const data = await readBody(request);
         if (!data) return json({ error: "invalid JSON" }, 400);
-        if (data.priority && !PRIORITIES.includes(data.priority)) return json({ error: "invalid priority" }, 400);
-        if (data.status && !STATUSES.includes(data.status)) return json({ error: "invalid status" }, 400);
+        if (data.priority && !PRIORITIES.includes(data.priority)) {
+          return json({ error: "invalid priority" }, 400);
+        }
+        if (data.status && !STATUSES.includes(data.status)) {
+          return json({ error: "invalid status" }, 400);
+        }
 
         const updated = {
           ...existing,
           title: data.title ? data.title.trim() : existing.title,
           priority: data.priority || existing.priority,
           status: data.status || existing.status,
+          category: data.category !== undefined ? data.category : (existing.category || "Academic"),
+          dueDate: data.dueDate !== undefined ? data.dueDate : (existing.dueDate || null),
         };
         await env.TASKS_KV.put(key, JSON.stringify(updated));
         return json(updated);
